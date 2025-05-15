@@ -1,0 +1,74 @@
+# Air Quality Prediction Project - Colab Compatible
+
+# 📦 Install required libraries (if needed)
+!pip install -q pandas scikit-learn matplotlib seaborn xgboost
+
+# 📁 Step 1: Upload and extract the dataset
+import zipfile
+import os
+
+# Mount Google Drive or use local
+uploaded_file_path = "/mnt/data/city_day.csv.zip"
+
+# Unzip the uploaded dataset
+with zipfile.ZipFile(uploaded_file_path, 'r') as zip_ref:
+    zip_ref.extractall("/tmp")
+    print("✅ File extracted")
+
+# 📚 Step 2: Load dataset
+import pandas as pd
+
+df = pd.read_csv("/tmp/city_day.csv")
+print("✅ Data loaded. Shape:", df.shape)
+
+# 🧼 Step 3: Data Preprocessing
+df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+df = df.dropna(subset=['AQI'])  # Drop rows where AQI is missing
+
+# Fill missing pollutant values with mean
+pollutants = ['PM2.5', 'PM10', 'NO', 'NO2', 'NOx', 'NH3', 'CO', 'SO2', 'O3', 'Benzene', 'Toluene', 'Xylene']
+df[pollutants] = df[pollutants].fillna(df[pollutants].mean())
+
+# Encode categorical features
+from sklearn.preprocessing import LabelEncoder
+
+df['City'] = LabelEncoder().fit_transform(df['City'])
+
+# 🎯 Step 4: Define features and target
+features = pollutants + ['City']
+target = 'AQI'
+
+X = df[features]
+y = df[target]
+
+# 🧠 Step 5: Train/Test Split
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 🔍 Step 6: Train a machine learning model (XGBoost)
+from xgboost import XGBRegressor
+
+model = XGBRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# 📊 Step 7: Evaluation
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+y_pred = model.predict(X_test)
+
+print("📈 MAE:", mean_absolute_error(y_test, y_pred))
+print("📉 MSE:", mean_squared_error(y_test, y_pred))
+print("🔁 R² Score:", r2_score(y_test, y_pred))
+
+# 📈 Step 8: Visualization
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(10, 5))
+sns.scatterplot(x=y_test, y=y_pred, alpha=0.6)
+plt.xlabel("Actual AQI")
+plt.ylabel("Predicted AQI")
+plt.title("Actual vs Predicted AQI")
+plt.grid(True)
+plt.show()
